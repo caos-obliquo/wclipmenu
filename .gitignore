@@ -1,0 +1,31 @@
+# AI agent memory / instruction files (OMO, CLAUDE, etc.)
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+AGENTS.local.md
+.omo/
+.opencode/
+.opencode.json
+.codex/
+.cursor/
+.cursorrules
+.windsurfrules
+.github/copilot-instructions.md
+.todo.md
+
+# Build artifacts
+bin/
+*.o
+*.a
+*.so
+
+# Kaprica databases (never commit history dbs)
+*.db
+*.sqlite
+*.sqlite3
+
+# Editor swap / backups
+*~
+*.swp
+*.bak
+*.backup
