@@ -31,6 +31,7 @@
 
 #define KAPC_PATH "/usr/local/bin/kapc"
 #define DEFAULT_LIMIT 100
+#define DEFAULT_IMAGE_LIMIT 10
 #define WMENU_LINES 15
 #define WMENU_PROMPT "clipboard:"
 
@@ -500,6 +501,13 @@ static int render_thumb(const char *magick, long id, char *thumb,
 	snprintf(ids, sizeof ids, "%ld", id);
 	const char *db = getenv("WCLIPMENU_DB");
 
+	/* cache hit: a thumb from a prior launch is reusable - skip the
+	 * expensive kapc paste + magick pipeline entirely (image picker
+	 * must open near-instantly on repeat use) */
+	snprintf(thumb, thumbsz, "/tmp/wclipmenu-thumb-%ld.png", id);
+	if (access(thumb, R_OK) == 0)
+		return 0;
+
 	char rawtmpl[] = "/tmp/wclipmenu-raw-XXXXXX";
 	int fd = mkstemp(rawtmpl);
 	if (fd == -1)
@@ -562,14 +570,6 @@ static int render_thumb(const char *magick, long id, char *thumb,
 	return 0;
 }
 
-static void cleanup_thumbs(struct pick *picks, size_t n)
-{
-	size_t i;
-	for (i = 0; i < n; i++)
-		if (picks[i].thumb[0])
-			unlink(picks[i].thumb);
-}
-
 static int cmd_image(int limit)
 {
 	char *magick = NULL;
@@ -612,10 +612,30 @@ static int cmd_image(int limit)
 		return 1;
 	}
 	size_t i;
+	/* parallel thumbnail render: kapc paste + magick dominate first-open
+	 * time; fork one child per entry so N thumbs build concurrently and
+	 * the picker opens near-instantly even on a cold cache */
+	size_t nlive = 0;
+	for (i = 0; i < n; i++) {
+		pid_t pid = fork();
+		if (pid == 0) {
+			char tbuf[64];
+			int rc = render_thumb(magick, es[i].id, tbuf,
+					      sizeof tbuf);
+			_exit(rc == 0 ? 0 : 1);
+		} else if (pid > 0) {
+			nlive++;
+		}
+	}
+	while (nlive > 0) {
+		waitpid(-1, NULL, 0);
+		nlive--;
+	}
 	for (i = 0; i < n; i++) {
 		picks[i].es_idx = i;
-		if (render_thumb(magick, es[i].id, picks[i].thumb,
-				 sizeof picks[i].thumb) == -1)
+		snprintf(picks[i].thumb, sizeof picks[i].thumb,
+			 "/tmp/wclipmenu-thumb-%ld.png", es[i].id);
+		if (access(picks[i].thumb, R_OK) != 0)
 			picks[i].thumb[0] = '\0'; /* no thumbnail, plain row */
 	}
 
@@ -624,7 +644,6 @@ static int cmd_image(int limit)
 	size_t cap = 4096, len = 0;
 	char *lines = malloc(cap);
 	if (!lines) {
-		cleanup_thumbs(picks, n);
 		free(picks);
 		free(es);
 		free(raw);
@@ -642,7 +661,6 @@ static int cmd_image(int limit)
 			char *nb = realloc(lines, cap);
 			if (!nb) {
 				free(lines);
-				cleanup_thumbs(picks, n);
 				free(picks);
 				free(es);
 				free(raw);
@@ -657,7 +675,6 @@ static int cmd_image(int limit)
 			: snprintf(lines + len, cap - len, "%s\n", snippet);
 		if (m < 0 || (size_t)m >= cap - len) {
 			free(lines);
-			cleanup_thumbs(picks, n);
 			free(picks);
 			free(es);
 			free(raw);
@@ -670,7 +687,6 @@ static int cmd_image(int limit)
 	char *sel = NULL;
 	if (run_wmenu_lines(lines, &sel) == -1) {
 		free(lines);
-		cleanup_thumbs(picks, n);
 		free(picks);
 		free(es);
 		free(raw);
@@ -703,7 +719,6 @@ static int cmd_image(int limit)
 		}
 	}
 	free(sel);
-	cleanup_thumbs(picks, n);
 	free(picks);
 	free(es);
 	free(raw);
