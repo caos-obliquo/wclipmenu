@@ -281,5 +281,5 @@ int cmd_image(int limit)
 		fprintf(stderr, "wclipmenu: selection not found in history\n");
 		return 1;
 	}
-	return cmd_copy(id);
+	return cmd_copy_image(id);
 }

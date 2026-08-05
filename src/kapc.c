@@ -120,6 +120,62 @@ int spawn_detach(const char *const argv[])
 }
 
 /*
+ * Run a | b in a child pipe and return immediately (do NOT wait).
+ * Used for image copy-back: `kapc paste -i <id> | wl-copy --foreground`.
+ * kapc paste writes the entry's raw data to stdout; wl-copy owns the
+ * selection and serves it on both wlr-data-control and wl_data_device.
+ * A kapd-owned selection (kapc copy) only serves wlr-data-control, which
+ * truncates in wl_data_device readers like Waterfox. Both children get
+ * stdin from /dev/null; neither may be waited on (wl-copy --foreground
+ * lives until the selection is replaced, so waiting would hang).
+ */
+int pipeline_detach(const char *const a[], const char *const b[])
+{
+	int fds[2];
+	if (pipe(fds) == -1)
+		return -1;
+	pid_t pa = fork();
+	if (pa == -1) {
+		close(fds[0]);
+		close(fds[1]);
+		return -1;
+	}
+	if (pa == 0) {
+		close(fds[0]);
+		dup2(fds[1], STDOUT_FILENO);
+		close(fds[1]);
+		int devnull = open("/dev/null", O_RDONLY);
+		if (devnull >= 0) {
+			dup2(devnull, STDIN_FILENO);
+			close(devnull);
+		}
+		execv(a[0], (char *const *)a);
+		_exit(127);
+	}
+	pid_t pb = fork();
+	if (pb == -1) {
+		close(fds[0]);
+		close(fds[1]);
+		return -1;
+	}
+	if (pb == 0) {
+		close(fds[1]);
+		dup2(fds[0], STDIN_FILENO);
+		close(fds[0]);
+		int devnull = open("/dev/null", O_RDONLY);
+		if (devnull >= 0) {
+			dup2(devnull, STDIN_FILENO);
+			close(devnull);
+		}
+		execvp(b[0], (char *const *)b);
+		_exit(127);
+	}
+	close(fds[0]);
+	close(fds[1]);
+	return 0;
+}
+
+/*
  * Run argv and wait for it, returning the child exit status (or -1 on
  * spawn failure). The child's stderr is discarded — used for magick, where
  * a corrupt source makes it complain about the image header on every run.
