@@ -10,7 +10,7 @@ LDFLAGS =
 PREFIX  = /usr/local
 BINDIR  = $(PREFIX)/bin
 
-SRC = src/wclipmenu.c
+SRC = src/wclipmenu.c src/kapc.c src/entries.c src/image.c src/wmenu.c src/commands.c
 BIN = bin/wclipmenu
 
 all: $(BIN)
