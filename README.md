@@ -63,5 +63,4 @@ their own, because kapd observes the `wl-copy` selection.
 * [dwl](https://codeberg.org/dwl/dwl) — the window manager / keybind host
 * [clipmenu](https://github.com/cdown/clipmenu) — the original this is modeled
   on
-
-Caos — [caos-obliquo](https://github.com/caos-obliquo)
+  
