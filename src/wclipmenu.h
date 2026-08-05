@@ -23,7 +23,6 @@
 
 #define KAPC_PATH "/usr/local/bin/kapc"
 #define DEFAULT_LIMIT 100
-#define DEFAULT_IMAGE_LIMIT 10
 #define WMENU_LINES 15
 #define WMENU_IMAGE_LINES 5
 #define WMENU_PROMPT "clipboard:"
