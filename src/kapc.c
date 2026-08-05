@@ -162,11 +162,6 @@ int pipeline_detach(const char *const a[], const char *const b[])
 		close(fds[1]);
 		dup2(fds[0], STDIN_FILENO);
 		close(fds[0]);
-		int devnull = open("/dev/null", O_RDONLY);
-		if (devnull >= 0) {
-			dup2(devnull, STDIN_FILENO);
-			close(devnull);
-		}
 		execvp(b[0], (char *const *)b);
 		_exit(127);
 	}
