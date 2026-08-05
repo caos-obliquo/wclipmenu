@@ -1,7 +1,7 @@
 # wclipmenu — wmenu-based clipboard picker over kaprica (Wayland)
 # Zero-footprint, on-demand binary. Depends on libc + external wmenu + kaprica.
 
-VERSION = 0.1
+VERSION = 0.1.0
 
 CC      = cc
 CFLAGS  = -std=c11 -Wall -Wextra -O2 -g
