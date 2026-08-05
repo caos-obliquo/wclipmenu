@@ -33,6 +33,7 @@
 #define DEFAULT_LIMIT 100
 #define DEFAULT_IMAGE_LIMIT 10
 #define WMENU_LINES 15
+#define WMENU_IMAGE_LINES 5
 #define WMENU_PROMPT "clipboard:"
 
 struct entry {
@@ -265,7 +266,7 @@ static size_t parse_entries(char *raw, struct entry *es, size_t max)
  * line back. Returns 0 and writes selection (NUL-terminated, malloc'd) on
  * success, -1 if wmenu failed or the user cancelled.
  */
-static int run_wmenu_lines(const char *input, char **sel)
+static int run_wmenu_lines(const char *input, int wmenu_lines, char **sel)
 {
 	const char *wmenu = getenv("WCLIPMENU_WMENU");
 	if (!wmenu || !*wmenu)
@@ -298,7 +299,7 @@ static int run_wmenu_lines(const char *input, char **sel)
 		close(outpipe[0]);
 		close(outpipe[1]);
 		char lines[16];
-		snprintf(lines, sizeof lines, "%d", WMENU_LINES);
+		snprintf(lines, sizeof lines, "%d", wmenu_lines);
 /* -N normal background alpha from RRGGBBAA (cc = minimal transparency) */
 		const char *argv[] = { wmenu, "-l", lines, "-i", "-c", "-p",
 				       WMENU_PROMPT, "-N", "#222222cc",
@@ -403,7 +404,7 @@ static int run_wmenu(const struct entry *es, size_t n, char **sel)
 		input[off++] = '\n';
 	}
 	input[off] = '\0';
-	int st = run_wmenu_lines(input, sel);
+	int st = run_wmenu_lines(input, WMENU_LINES, sel);
 	free(input);
 	return st;
 }
@@ -488,9 +489,9 @@ static int resolve_magick(char **path)
 }
 
 /*
- * Render a 96x96 PNG thumbnail for entry id into *thumb. Two-step file
+ * Render a 160x160 PNG thumbnail for entry id into *thumb. Two-step file
  * pipeline keeps the child plumbing trivial: `kapc paste` bytes land in an
- * mkstemp raw file, then `magick <raw> -resize 96x96 <thumb>` resizes it.
+ * mkstemp raw file, then `magick <raw> -resize 160x160 <thumb>` resizes it.
  * Returns 0 with thumb filled in, -1 on any failure (raw file and any
  * partial output are unlinked; caller falls back to a plain text row).
  */
@@ -560,7 +561,7 @@ static int render_thumb(const char *magick, long id, char *thumb,
 	/* wmenu's cairo_image_surface_create_from_png needs the .png suffix */
 	snprintf(thumb, thumbsz, "/tmp/wclipmenu-thumb-%ld.png", id);
 	unlink(thumb); /* drop any stale partial from a prior run */
-	const char *argv[] = { magick, rawin, "-resize", "96x96", thumb, NULL };
+	const char *argv[] = { magick, rawin, "-resize", "160x160", thumb, NULL };
 	st = run_quiet(argv);
 	unlink(rawin);
 	if (st != 0 || access(thumb, F_OK) == -1) {
@@ -685,7 +686,7 @@ static int cmd_image(int limit)
 	}
 
 	char *sel = NULL;
-	if (run_wmenu_lines(lines, &sel) == -1) {
+	if (run_wmenu_lines(lines, WMENU_IMAGE_LINES, &sel) == -1) {
 		free(lines);
 		free(picks);
 		free(es);
