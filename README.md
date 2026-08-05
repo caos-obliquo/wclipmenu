@@ -1,116 +1,67 @@
 # wclipmenu
 
-wmenu-based clipboard manager for Wayland. Picks from kaprica history — text or
-images with thumbnail previews. C, suckless-style: one small on-demand binary,
-no daemon, no polling, no config files.
+wclipmenu is a clipboard picker for Wayland. It shows the clipboard history of
+the kaprica daemon in a wmenu menu — text entries or image entries with
+thumbnail previews — and copies the selection back to the clipboard. It runs
+on demand from a keybind, picks once and exits: no resident process, no
+polling, no bloat.
 
-## Synopsis
+## Building
 
-	wclipmenu
-	wclipmenu list [-n count]
-	wclipmenu image [-n count]
-	wclipmenu copy <id>
-	wclipmenu -h
+wclipmenu needs no libraries beyond libc. At runtime it expects:
 
-## Description
+* [kaprica](https://github.com/ArtsyMacaw/kaprica) — `kapd` daemon + `kapc`
+  CLI (installed at /usr/local/bin/kapc)
+* [wmenu-caos](https://github.com/caos-obliquo/wmenu-caos) — the wmenu fork
+  with `[img:]` PNG thumbnail rendering (image picking)
+* [ImageMagick](https://imagemagick.org/) — thumbnail rendering (`magick`)
+* [dwl](https://codeberg.org/dwl/dwl) — optional, provides the keybinds
 
-`wclipmenu` is a thin glue layer between the kaprica clipboard daemon
-(`kapd`/`kapc`) and a wmenu-based picker. It runs only when you press the
-keybind, reads the kaprica history through the `kapc` CLI, shows a picker, and
-exits after the selection is copied back to the clipboard. There is no resident
-process.
+Afterwards, run:
 
-With no arguments it picks from the text history (`text/plain`). `image` picks
-from the image history (`image/png`) with PNG thumbnails rendered through the
-custom [wmenu-caos](https://github.com/caos-obliquo/wmenu-caos) fork. `list` prints snippets to stdout and `copy <id>`
-copies one entry — both are debug/CLI paths.
-
-## Options
-
-	-h, --help       print usage and exit
-	list [-n count]  print `count` newest snippet lines to stdout (default 100)
-	image [-n count] pick from the image history with thumbnail previews
-	copy <id>        copy history entry `id` back to the clipboard
-
-`count` is clamped to 1..10000 (kapd keeps up to 10000 entries).
-
-## Environment
-
-	WCLIPMENU_WMENU  path to the wmenu binary (default: `wmenu` from PATH)
-	WCLIPMENU_LIMIT  max entries fetched from kaprica (default: 100)
-	WCLIPMENU_DB     kaprica db file passed to kapc as -D (default: kaprica's)
-
-The `WCLIPMENU_*` overrides exist for testing and are not needed for normal use.
-
-## How it works
-
-- Text picker: `kapc search -t text/plain -L -l <n>`, feed the `<id>\t<snippet>`
-  lines to `wmenu -l 15`, then `kapc copy -i <id>`.
-- Image picker: `kapc search -t image/png -L -l <n>`. Each entry's thumbnail is
-  rendered with `magick -resize 160x160` to `/tmp/wclipmenu-thumb-<id>.png`
-  (cached on disk, rendered in parallel child processes), then fed to the picker
-  as `[img:<path>]<snippet>` lines — the [wmenu-caos](https://github.com/caos-obliquo/wmenu-caos) fork renders the PNGs.
-  The image picker shows 5 entries per page (`-l 5`); arrow keys page through
-  all results.
-- Screenshots taken with Super+S / Super+Shift+S (dwl-screenshot) show up in the
-  image picker on their own, because `kapd` observes the `wl-copy` selection.
-
-## Requirements
-
-- A Wayland session (dwl or any compositor)
-- [kaprica](https://github.com/ArtsyMacaw/kaprica) installed:
-  `kapd` daemon + `kapc` at /usr/local/bin/kapc
-- [wmenu-caos](https://github.com/caos-obliquo/wmenu-caos) as the picker
-  (needed for image thumbnails; plain `wmenu` works for text)
-- ImageMagick (`magick`) for thumbnail rendering
-
-## Build and install
-
-	make
-	sudo make install          # installs to /usr/local/bin
-	make PREFIX=$HOME/.local install
-
-Builds with `-std=c11 -Wall -Wextra -O2`, zero warnings required. There is no
-`make test` shortcut from the repo root — see Tests below.
+```
+make
+make install
+```
 
 ## Usage
 
-Keybinds in dwl config:
+Run `wclipmenu` to pick from the text history, `wclipmenu image` to pick from
+the image history. Press Enter to copy the selection, Esc to cancel. The
+filter is case-insensitive; arrow keys page through the whole history (kapd
+keeps up to 10000 entries).
 
-	Super+P        text picker
-	Super+Shift+P  image picker
+See the man page (`man wclipmenu`) for the full synopsis and options.
 
-Select with arrow keys, confirm with Enter (copies to clipboard), Escape
-cancels. Typing filters the list; case-insensitive matching is on.
+Typical dwl keybinds:
 
-## Tests
+```
+Super+P        wclipmenu
+Super+Shift+P  wclipmenu image
+```
 
-	cd tests && make clean && make && make test
+Screenshots taken with Super+S / Super+Shift+S show up in the image picker on
+their own, because kapd observes the `wl-copy` selection.
 
-Requires a live Wayland session, kaprica installed, and **no system kapd
-running** (kapd is a singleton). All 6 suites (daemon, text, search, reverse,
-image, picker) run against an isolated db under `/tmp`, so the real history db
-is never touched.
+## Comparison
 
-## Development
+* [clipmenu](https://github.com/cdown/clipmenu) — the dmenu-based original
+  this is modeled on; X11-centric, uses clipnotify.
+* [cclip](https://github.com/erebe/cclip) — Rust Wayland clipboard manager;
+  resident daemon, different selection model.
+* [kaprica](https://github.com/ArtsyMacaw/kaprica) — the daemon/CLI backend
+  this builds on; not a picker itself.
 
-Feature branch → PR → CI green → merge to main. No direct pushes to main.
-CI (`.github/workflows/ci.yml`) builds with `make` on build-essential for every
-pull request and push to main; `make test` is not part of CI because it needs a
-live Wayland session.
+## Credits
 
-## Credits / inspiration
+* [wmenu](https://sr.ht/~adnano/wmenu/) — the picker this project drives
+* [kaprica](https://github.com/ArtsyMacaw/kaprica) — clipboard daemon + CLI
+* [wmenu-caos](https://github.com/caos-obliquo/wmenu-caos) — the wmenu fork
+  with image thumbnails
+* [wl-clipboard](https://github.com/bugaevc/wl-clipboard) — Wayland clipboard
+  utilities (`wl-copy`)
+* [dwl](https://codeberg.org/dwl/dwl) — the window manager / keybind host
+* [clipmenu](https://github.com/cdown/clipmenu) — the original this is modeled
+  on
 
-- [wmenu-caos](https://github.com/caos-obliquo/wmenu-caos): wmenu fork with
-  `[img:]` PNG thumbnail rendering, used as the picker UI
-- [wmenu](https://sr.ht/~adnano/wmenu/): upstream picker (dmenu-style,
-  Wayland-native)
-- [kaprica](https://github.com/ArtsyMacaw/kaprica): clipboard daemon + CLI
-  backend
-- [dwl](https://codeberg.org/dwl/dwl): the window manager / keybind host
-- [wl-clipboard](https://github.com/bugaevc/wl-clipboard): Wayland clipboard
-  utilities
-- [clipmenu](https://github.com/cdown/clipmenu): the dmenu-based original this
-  is modeled on
-
-wclipmenu is a thin glue layer standing on their work.
+Caos — [caos-obliquo](https://github.com/caos-obliquo)
