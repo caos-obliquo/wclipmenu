@@ -36,6 +36,7 @@ struct entry {
 int run_capture_raw(const char *const argv[], char **out, size_t *outlen);
 int run_capture(const char *const argv[], char **out);
 int spawn_detach(const char *const argv[]);
+int pipeline_detach(const char *const a[], const char *const b[]);
 int run_quiet(const char *const argv[]);
 int kapc_search_type(const char *type, int limit, char **out);
 int kapc_search(int limit, char **out);
@@ -51,6 +52,7 @@ int run_wmenu(const struct entry *es, size_t n, char **sel);
 /* commands.c */
 int cmd_list(int limit);
 int cmd_copy(long id);
+int cmd_copy_image(long id);
 int cmd_pick(int limit);
 
 /* image.c */

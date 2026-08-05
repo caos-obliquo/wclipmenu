@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "wclipmenu.h"
 
@@ -48,6 +49,39 @@ int cmd_copy(long id)
 	}
 	if (st == -1) {
 		fprintf(stderr, "wclipmenu: failed to spawn kapc copy\n");
+		free(ids);
+		return 1;
+	}
+	free(ids);
+	return 0;
+}
+
+/*
+ * Image copy-back must route through wl-copy, not `kapc copy`: a
+ * kapd-owned selection is served on wlr-data-control only, and clients
+ * that read wl_data_device (Waterfox) pull a truncated PNG with a white
+ * bottom. `kapc paste -i <id> | wl-copy --foreground -t image/png` makes
+ * wl-copy the owner, which serves both protocols (same mechanism as the
+ * dwl-screenshot fix).
+ */
+int cmd_copy_image(long id)
+{
+	char *ids = kapc_copy_cmd(id);
+	if (!ids)
+		return 1;
+	const char *db = getenv("WCLIPMENU_DB");
+	const char *left[8] = { KAPC_PATH, "paste", "-i", ids, NULL };
+	int n = 4;
+	if (db && *db) {
+		left[n++] = "-D";
+		left[n++] = db;
+	}
+	left[n] = NULL;
+	const char *right[] = { "wl-copy", "--foreground", "-t", "image/png",
+				NULL };
+	int st = pipeline_detach(left, right);
+	if (st == -1) {
+		fprintf(stderr, "wclipmenu: failed to spawn paste|wl-copy\n");
 		free(ids);
 		return 1;
 	}
