@@ -18,3 +18,18 @@ First release.
 - Env overrides: `WCLIPMENU_WMENU`, `WCLIPMENU_LIMIT`, `WCLIPMENU_DB`
 - Test harness: 6 C suites locking the kaprica CLI contract
 - Man page (`wclipmenu.1`), sibling-style README, GitHub Actions CI
+
+## [0.1.1] - 2026-08-05
+
+### Fixed
+
+- Image picker pasted truncated images in browsers: copy-back now uses
+  `kapc paste | wl-copy --foreground` (kapd serves only wlr-data-control;
+  wl-copy also serves wl_data_device, which browsers read)
+
+## [0.1.2] - 2026-08-05
+
+### Fixed
+
+- Malformed image paste: wl-copy's stdin was clobbered by /dev/null in the
+  pipeline helper, advertising an empty image
