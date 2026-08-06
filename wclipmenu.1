@@ -38,8 +38,15 @@ and showing them through the
 .Sy wmenu-caos
 picker, which supports the
 .Sy [img:\&] PNG protocol.
-The selection is copied back with
-.Sy kapc copy .
+Text selections are copied back with
+.Sy kapc copy ;
+image selections with
+.Sy kapc paste
+piped into
+.Sy wl-copy --foreground
+so browsers on the
+.Sy wl_data_device
+protocol receive the full image.
 .Pp
 The picker filter is case-insensitive. Pressing
 .Sy Enter
